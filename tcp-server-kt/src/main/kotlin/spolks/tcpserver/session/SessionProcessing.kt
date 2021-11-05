@@ -1,25 +1,30 @@
 package spolks.tcpserver.session
 
+import java.io.Closeable
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.net.Socket
+import spolks.tcpserver.CONTINUE
 import spolks.tcpserver.ERROR
+import spolks.tcpserver.OK
 import spolks.tcpserver.command.Command
+import spolks.tcpserver.command.CommandName
+import spolks.tcpserver.command.CommandPayload
 import spolks.tcpserver.command.CommandStatus
 import spolks.tcpserver.command.CommandStorage
 import spolks.tcpserver.command.parseCommandName
 import spolks.tcpserver.command.parseCommandPayload
-import java.io.Closeable
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.lang.IllegalArgumentException
-import java.net.Socket
 
 class SessionProcessing(
     private val client: Socket,
     private val input: DataInputStream = DataInputStream(client.getInputStream()),
     private val output: DataOutputStream = DataOutputStream(client.getOutputStream())
 ) : Closeable {
+    var shutdown = false
 
     fun run() {
         val clientId = resolveClientId(input.readInt())
+        println("#Client id is $clientId")
         output.writeInt(clientId)
         processPendingCommands(clientId)
         processWorkLoop(clientId)
@@ -33,26 +38,31 @@ class SessionProcessing(
     private fun processWorkLoop(clientId: Int) {
         var stop = false
         do {
-            val command = receiveCommand(clientId)
+            val commandPayload = parseCommandPayload(input.readUTF(), clientId)
+            val command = receiveCommand(clientId, commandPayload)
             command?.let {
-                it.execute()
+                it.execute(commandPayload, input, output)
                 stop = it.terminationCommand
                 SessionsStorage.getInfo(clientId).apply {
                     status = CommandStatus.COMPLETED
                 }
+                shutdown = CommandName.SHUTDOWN.name.equals(commandPayload.commandName, ignoreCase = true)
             }
         } while (!stop)
     }
 
-    private fun receiveCommand(clientId: Int): Command? {
+    private fun receiveCommand(clientId: Int, commandPayload: CommandPayload): Command? {
         return try {
-            val commandPayload = parseCommandPayload(input.readUTF())
             val commandName = parseCommandName(commandPayload.commandName)
             SessionsStorage.getInfo(clientId).apply {
                 command = commandName
                 status = CommandStatus.IN_PROGRESS
             }
-            output.writeUTF(commandName.name)
+            if (commandName != CommandName.UNRESOLVED) {
+                output.writeUTF(OK)
+            } else {
+                output.writeUTF("$ERROR unrecognized command")
+            }
             CommandStorage.get(commandName)
         } catch (e: IllegalArgumentException) {
             output.writeUTF("$ERROR ${e.message}")
@@ -63,9 +73,19 @@ class SessionProcessing(
     private fun processPendingCommands(clientId: Int) {
         SessionsStorage.getInfo(clientId).let {
             if (it.status == CommandStatus.IN_PROGRESS) {
-                CommandStorage.getResumingCommand(it.command).execute()
+                output.writeUTF(it.command.name)
+                val clientResponse = input.readUTF()
+                if (clientResponse.startsWith(CONTINUE)) {
+                    CommandStorage.getResumingCommand(it.command)
+                        .execute(CommandPayload(it.command.name, emptyList(), it.command.name, clientId), input, output)
+                } else {
+                    println(">Client responded with $clientResponse")
+                    println(input.readUTF())
+                }
+                it.status = CommandStatus.COMPLETED
+            } else {
+                output.writeUTF("")
             }
-            it.status = CommandStatus.COMPLETED
         }
     }
 

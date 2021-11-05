@@ -12,3 +12,9 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
 }
+
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = "spolks.tcpserver.MainKt"
+    }
+}
