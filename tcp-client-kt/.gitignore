@@ -1,6 +1,7 @@
 ### Kotlin template
 # Compiled class file
 *.class
+resources
 
 # Log file
 *.log

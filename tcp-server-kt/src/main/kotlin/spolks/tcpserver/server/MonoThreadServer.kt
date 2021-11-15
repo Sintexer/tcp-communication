@@ -12,6 +12,7 @@ class MonoThreadServer(
     override fun run() {
         try {
             ServerSocket(port).use { server ->
+                server.soTimeout = 10_000_000
                 do {
                     println("#Waiting for client connection")
                     try {

@@ -26,7 +26,7 @@ class ResumeUploadCommand : ResumingCommand {
         val segmentsAmount = input.readInt()
         val startFrom = input.readLong()
         val bitrate = uploadFile(file, startFrom, segmentsAmount, segmentSize, output, input)
-        println("#Bitrate is $bitrate")
+        println("#Upload finished")
     }
 
     private fun checkServerIsReadyToStart(input: DataInputStream) {

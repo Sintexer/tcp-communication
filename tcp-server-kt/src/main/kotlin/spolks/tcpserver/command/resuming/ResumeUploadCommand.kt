@@ -14,6 +14,7 @@ class ResumeUploadCommand : FileCommand() {
     override val terminationCommand = false
 
     override fun execute(commandPayload: CommandPayload, input: DataInputStream, output: DataOutputStream) {
+        println("#Upload resumed")
         val clientId = commandPayload.clientId
         val uploadInfo = FileInfoStorage.getUploadInfo(clientId)
         if (uploadInfo == null) {

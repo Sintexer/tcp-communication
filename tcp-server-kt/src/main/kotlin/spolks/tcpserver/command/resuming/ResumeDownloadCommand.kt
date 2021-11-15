@@ -17,6 +17,7 @@ class ResumeDownloadCommand : FileCommand() {
     override val terminationCommand = false
 
     override fun execute(commandPayload: CommandPayload, input: DataInputStream, output: DataOutputStream) {
+        println("#Download resumed")
         val clientId = commandPayload.clientId
         val fileInfo = FileInfoStorage.getDownloadInfo(clientId)
         val file = checkResumeFileDownloadPreconditions(fileInfo, output)

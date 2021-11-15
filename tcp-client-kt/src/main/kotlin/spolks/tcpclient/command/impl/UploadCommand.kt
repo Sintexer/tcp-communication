@@ -33,7 +33,7 @@ class UploadCommand : FileCommand() {
         val segmentsAmount = input.readInt()
         val startFrom = input.readLong()
         val bitrate = uploadFile(file, startFrom, segmentsAmount, segmentSize, output, input)
-        println("#Upload successful, bitrate is $bitrate")
+        println("#Upload successful")
     }
 
     private fun checkUploadPreconditions(

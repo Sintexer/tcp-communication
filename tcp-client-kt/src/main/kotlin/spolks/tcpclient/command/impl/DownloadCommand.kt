@@ -39,11 +39,11 @@ class DownloadCommand : FileCommand() {
                 val buffer = ByteArray(segmentSize)
                 val bytesRead = input.read(buffer)
                 fileOut.write(buffer, 0, bytesRead)
+                output.writeUTF(OK)
             }
         }
         output.writeUTF(OK)
         val bitrate = input.readLong()
         println("#File downloaded")
-        println("#Bitrate is: $bitrate")
     }
 }

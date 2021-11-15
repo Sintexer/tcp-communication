@@ -14,6 +14,7 @@ class UploadCommand : FileCommand() {
     override val terminationCommand = false
 
     override fun execute(commandPayload: CommandPayload, input: DataInputStream, output: DataOutputStream) {
+        println("#Upload started")
         val file = checkUploadPreconditions(commandPayload, output)
         val filename = commandPayload.commandWithArgs.substring(commandPayload.commandName.length + 1)
         val fileLength = input.readLong()

@@ -13,6 +13,7 @@ class DownloadCommand : FileCommand() {
     override val terminationCommand = false
 
     override fun execute(commandPayload: CommandPayload, input: DataInputStream, output: DataOutputStream) {
+        println("#Download started")
         if (commandPayload.commandName == commandPayload.commandWithArgs.trim()) {
             output.writeUTF("$ERROR No filename provided")
             throw IllegalCommandArgsException("No filename provided")

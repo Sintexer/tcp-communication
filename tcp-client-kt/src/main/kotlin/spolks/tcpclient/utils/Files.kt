@@ -37,6 +37,10 @@ fun uploadFile(
             val buffer = ByteArray(segmentSize)
             val bytesRead = fileIn.read(buffer, 0, segmentSize)
             output.write(buffer, 0, bytesRead)
+            if (!input.readUTF().startsWith(OK)) {
+                println("Client failed to download file")
+                throw CommandFlowException("#Timeout")
+            }
         }
     }
     if (!input.readUTF().startsWith(OK)) {

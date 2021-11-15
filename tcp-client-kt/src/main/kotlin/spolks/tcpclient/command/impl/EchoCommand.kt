@@ -15,6 +15,7 @@ class EchoCommand : Command {
         input: DataInputStream,
         output: DataOutputStream
     ) {
+        sendCommandToServer(commandAndArgs, input, output)
         println("Server responded with: ${input.readUTF()}")
     }
 }

@@ -14,6 +14,7 @@ import java.util.*
 import spolks.tcpserver.OK
 import spolks.tcpserver.RESOURCES_FOLDER
 import spolks.tcpserver.command.Command
+import spolks.tcpserver.command.impl.exception.CommandFlowException
 import spolks.tcpserver.files.FileInfo
 import spolks.tcpserver.files.FileInfoStorage
 
@@ -63,6 +64,10 @@ abstract class FileCommand : Command {
                 output.write(buffer, 0, bytesRead)
                 val bytesTransferred = FileInfoStorage.getDownloadInfo(clientId)!!.bytesTransferred + bytesRead
                 FileInfoStorage.putDownloadInfo(clientId, FileInfo(filename, bytesTransferred))
+                if (!input.readUTF().startsWith(OK)) {
+                    println("Client failed to download file")
+                    throw CommandFlowException("#Timeout")
+                }
             }
             if (!input.readUTF().startsWith(OK)) {
                 println("Client failed to download file")
@@ -97,12 +102,14 @@ abstract class FileCommand : Command {
                 fileOut.write(buffer, 0, bytesRead)
                 val bytesTransferred = FileInfoStorage.getUploadInfo(clientId)!!.bytesTransferred + bytesRead
                 FileInfoStorage.putUploadInfo(clientId, FileInfo(filename, bytesTransferred))
+                output.writeUTF(OK)
             }
         }
         output.writeUTF(OK)
         val timeSpent = ((Date().time - startAt + 1) / 1000) + 1
         val bitrate = FileInfoStorage.getUploadInfo(clientId)!!.bytesTransferred / timeSpent
         output.writeLong(bitrate)
+        println("#Upload finished")
         println("#Upload bitrate is: $bitrate")
         FileInfoStorage.removeDetails(clientId)
     }

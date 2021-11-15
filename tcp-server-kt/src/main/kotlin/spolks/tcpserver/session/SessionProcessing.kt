@@ -21,6 +21,7 @@ class SessionProcessing(
     private val output: DataOutputStream = DataOutputStream(client.getOutputStream())
 ) : Closeable {
     var shutdown = false
+    private var counter = 1
 
     fun run() {
         val clientId = resolveClientId(input.readInt())
@@ -90,6 +91,6 @@ class SessionProcessing(
     }
 
     private fun resolveClientId(receivedClientId: Int): Int {
-        return if (receivedClientId == 0) SessionIdentifierGenerator.next else receivedClientId
+        return if (receivedClientId == 0) counter++ else receivedClientId
     }
 }
