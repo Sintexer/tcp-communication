@@ -18,6 +18,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.3")
 }
 
 tasks.withType<Jar> {
