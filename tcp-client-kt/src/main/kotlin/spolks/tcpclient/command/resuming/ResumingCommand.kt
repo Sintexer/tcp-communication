@@ -1,8 +1,8 @@
 package spolks.tcpclient.command.resuming
 
+import spolks.tcpclient.terminal.ClientInputReader
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import spolks.tcpclient.terminal.ClientInputReader
 
 interface ResumingCommand {
     fun execute(

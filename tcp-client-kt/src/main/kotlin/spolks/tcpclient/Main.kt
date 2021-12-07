@@ -15,9 +15,9 @@ fun main(args: Array<String>) {
     val isUdp by parser.option(ArgType.Boolean, "udp", "u", "Run udp client").default(false)
 
     parser.parse(args)
-    if(!isUdp){
+    if (!isUdp) {
         TcpClient(ip, port, clientId).run()
     } else {
-        UdpClient(ip, port).run()
+        UdpClient(ip, port, clientId).run()
     }
 }

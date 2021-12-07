@@ -7,3 +7,9 @@ object SessionsStorage {
 
     fun getInfo(sessionId: Int) = sessionInfoMap.computeIfAbsent(sessionId) { SessionInfo() }
 }
+
+class LocalSessionsStorage() {
+    private val sessionInfoMap = ConcurrentHashMap<Int, SessionInfo>()
+
+    fun getInfo(sessionId: Int) = sessionInfoMap.computeIfAbsent(sessionId) { SessionInfo() }
+}

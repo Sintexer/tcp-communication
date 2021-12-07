@@ -1,10 +1,10 @@
 package spolks.tcpclient.client
 
-import java.io.IOException
-import java.net.Socket
 import spolks.tcpclient.session.SessionProcessing
 import spolks.tcpclient.terminal.TerminalInputReader
+import java.io.IOException
 import java.net.InetSocketAddress
+import java.net.Socket
 
 class TcpClient(
     private val ip: String,

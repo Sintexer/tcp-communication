@@ -1,6 +1,7 @@
 package spolks.tcpserver.server
 
 import spolks.tcpserver.OK
+import spolks.tcpserver.UDP_MAX_WAIT_FAILS
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -12,7 +13,7 @@ fun sendUdpReliably(
     address: InetAddress,
     port: Int,
     socket: DatagramSocket,
-    retries: Int = 5
+    retries: Int = UDP_MAX_WAIT_FAILS
 ) {
     var good = false
     var count = 0
@@ -20,7 +21,7 @@ fun sendUdpReliably(
         good = try {
             ++count
             if (count > retries) {
-                throw UdpConnectionException("Превышено число попыток соединения с Udp клиентом")
+                throw UdpConnectionException("Failed to send udp after $retries retries")
             }
             sendPacket(str, address, port, socket)
             receiveAck(address, port, socket)
@@ -47,7 +48,7 @@ fun sendUdpReliably(
         good = try {
             ++count
             if (count > retries) {
-                throw UdpConnectionException("Превышено число попыток соединения с Udp клиентом")
+                throw UdpConnectionException("Failed to send udp after $retries retries")
             }
             sendPacket(packet, address, port, socket)
             receiveAck(address, port, socket)
@@ -74,8 +75,8 @@ fun sendPacket(payload: String, address: InetAddress, port: Int, socket: Datagra
     socket.send(packet)
 }
 
-fun sendPacket(packet: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket) {
-    val pack = DatagramPacket(packet, packet.size, address, port)
+fun sendPacket(packet: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket, packetSize: Int = packet.size) {
+    val pack = DatagramPacket(packet, packetSize, address, port)
     socket.send(pack)
 }
 
@@ -88,9 +89,24 @@ fun receiveAck(address: InetAddress, port: Int, socket: DatagramSocket): Boolean
 
 fun receiveFileAck(address: InetAddress, port: Int, socket: DatagramSocket): Int {
     val buffer = ByteArray(64)
-    return buffer.toString().toInt()
+    val packet = DatagramPacket(buffer, buffer.size, address, port)
+    socket.receive(packet)
+    return String(buffer, 0, packet.length).toInt()
 }
 
-fun sendAck(buffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket) {
+fun sendAck(address: InetAddress, port: Int, socket: DatagramSocket) {
     return sendPacket(OK, address, port, socket)
+}
+
+fun dropPacket(address: InetAddress, port: Int, socket: DatagramSocket): Boolean {
+    val prevSoTimeout = socket.soTimeout
+    socket.soTimeout = 10
+    return try {
+        receivePacket(ByteArray(DEFAULT_BUFFER_SIZE), address, port, socket)
+        true
+    } catch (e: Exception) {
+        false
+    } finally {
+        socket.soTimeout = prevSoTimeout
+    }
 }

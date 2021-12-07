@@ -18,13 +18,7 @@ class MonoThreadUdpServer(
                 do {
                     println("#Waiting for UDP client connection")
                     server.soTimeout = 10_000_000
-                    try {
-                        shutdown = UdpSessionProcessing(server).run()
-                    } catch (e: SocketTimeoutException){
-                        println("Client didn't reconnect")
-                    } catch (e: IOException) {
-                        println("#Client error occurred: $e")
-                    }
+                    shutdown = UdpSessionProcessing(server).run()
                 } while (!shutdown)
             }
         } catch (e: IOException) {

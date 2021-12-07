@@ -69,6 +69,12 @@ fun receivePacket(buffer: ByteArray, address: InetAddress, port: Int, socket: Da
     return String(packet.data, 0, packet.length)
 }
 
+fun receiveFilePacket(buffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket): Int {
+    val packet = DatagramPacket(buffer, buffer.size, address, port)
+    socket.receive(packet)
+    return packet.length
+}
+
 fun sendPacket(payload: String, address: InetAddress, port: Int, socket: DatagramSocket) {
     val buf = payload.toByteArray()
     val packet = DatagramPacket(buf, buf.size, address, port)
@@ -92,11 +98,23 @@ fun receiveFileAck(address: InetAddress, port: Int, socket: DatagramSocket): Int
     return buffer.toString().toInt()
 }
 
-fun sendFileAck(id: Int, address: InetAddress, port: Int, socket: DatagramSocket): Int {
-    val buffer = ByteArray(64)
-    return buffer.toString().toInt()
+fun sendFileAck(id: Int, address: InetAddress, port: Int, socket: DatagramSocket) {
+    sendPacket(id.toString(), address, port, socket)
 }
 
 fun sendAck(address: InetAddress, port: Int, socket: DatagramSocket) {
     return sendPacket(OK, address, port, socket)
+}
+
+fun dropPacket(address: InetAddress, port: Int, socket: DatagramSocket): Boolean {
+    val prevSoTimeout = socket.soTimeout
+    socket.soTimeout = 500
+    return try {
+        receivePacket(ByteArray(DEFAULT_BUFFER_SIZE), address, port, socket)
+        true
+    } catch (e: Exception) {
+        false
+    } finally {
+        socket.soTimeout = prevSoTimeout
+    }
 }

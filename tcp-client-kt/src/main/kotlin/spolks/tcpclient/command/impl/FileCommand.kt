@@ -1,10 +1,10 @@
 package spolks.tcpclient.command.impl
 
+import spolks.tcpclient.RESOURCES_FOLDER
+import spolks.tcpclient.command.Command
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import spolks.tcpclient.RESOURCES_FOLDER
-import spolks.tcpclient.command.Command
 
 abstract class FileCommand : Command {
     fun getFile(filename: String): File? {

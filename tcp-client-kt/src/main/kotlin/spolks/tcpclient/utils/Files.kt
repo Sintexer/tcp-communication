@@ -1,15 +1,11 @@
 package spolks.tcpclient.utils
 
-import java.io.BufferedInputStream
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.nio.file.Files
-import java.nio.file.Path
 import spolks.tcpclient.OK
 import spolks.tcpclient.RESOURCES_FOLDER
 import spolks.tcpclient.command.exception.CommandFlowException
+import java.io.*
+import java.nio.file.Files
+import java.nio.file.Path
 
 fun getFile(filename: String): File {
     resourcesFolderExists()

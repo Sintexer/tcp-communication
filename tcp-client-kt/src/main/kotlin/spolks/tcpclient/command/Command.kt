@@ -1,10 +1,10 @@
 package spolks.tcpclient.command
 
-import java.io.DataInputStream
-import java.io.DataOutputStream
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.terminal.ClientInputReader
+import java.io.DataInputStream
+import java.io.DataOutputStream
 
 interface Command {
     val isTerminationCommand: Boolean

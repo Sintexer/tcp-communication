@@ -1,9 +1,5 @@
 package spolks.tcpclient.session
 
-import java.io.Closeable
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.net.Socket
 import spolks.tcpclient.CONTINUE
 import spolks.tcpclient.STOP
 import spolks.tcpclient.command.CommandStorage
@@ -11,6 +7,10 @@ import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.command.parseCommandName
 import spolks.tcpclient.terminal.ClientInputReader
 import spolks.tcpclient.terminal.CommandAndArgsReader
+import java.io.Closeable
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.net.Socket
 
 class SessionProcessing(
     private val server: Socket,
