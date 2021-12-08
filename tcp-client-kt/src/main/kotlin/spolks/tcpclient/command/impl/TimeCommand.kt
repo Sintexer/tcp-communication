@@ -1,10 +1,10 @@
 package spolks.tcpclient.command.impl
 
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import spolks.tcpclient.command.Command
 import spolks.tcpclient.command.CommandAndArgs
 import spolks.tcpclient.terminal.ClientInputReader
-import java.io.DataInputStream
-import java.io.DataOutputStream
 
 class TimeCommand : Command {
     override val isTerminationCommand = false

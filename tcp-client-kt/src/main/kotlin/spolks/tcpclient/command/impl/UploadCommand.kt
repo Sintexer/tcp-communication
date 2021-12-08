@@ -1,14 +1,14 @@
 package spolks.tcpclient.command.impl
 
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
 import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.CommandAndArgs
 import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.terminal.ClientInputReader
 import spolks.tcpclient.utils.uploadFile
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.io.File
 
 class UploadCommand : FileCommand() {
     override val isTerminationCommand = false

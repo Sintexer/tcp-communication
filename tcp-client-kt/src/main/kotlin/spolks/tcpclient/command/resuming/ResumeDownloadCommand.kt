@@ -1,12 +1,17 @@
 package spolks.tcpclient.command.resuming
 
+import java.io.BufferedOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
 import spolks.tcpclient.ERROR
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.terminal.ClientInputReader
 import spolks.tcpclient.utils.getFile
-import java.io.*
 
 class ResumeDownloadCommand : ResumingCommand {
     override fun execute(clientIn: ClientInputReader, input: DataInputStream, output: DataOutputStream) {

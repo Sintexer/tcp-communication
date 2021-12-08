@@ -1,9 +1,5 @@
 package spolks.tcpclient.command
 
-import spolks.tcpclient.*
-import spolks.tcpclient.command.exception.CommandFlowException
-import spolks.tcpclient.session.*
-import spolks.tcpclient.terminal.ClientInputReader
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -13,6 +9,20 @@ import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
+import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
+import spolks.tcpclient.ERROR
+import spolks.tcpclient.OK
+import spolks.tcpclient.RESOURCES_FOLDER
+import spolks.tcpclient.UDP_DEFAULT_SO_TIMEOUT
+import spolks.tcpclient.UDP_PACKET_SIZE
+import spolks.tcpclient.command.exception.CommandFlowException
+import spolks.tcpclient.session.receiveAck
+import spolks.tcpclient.session.receiveFilePacket
+import spolks.tcpclient.session.receivePacket
+import spolks.tcpclient.session.sendAck
+import spolks.tcpclient.session.sendFileAck
+import spolks.tcpclient.session.sendUdpReliably
+import spolks.tcpclient.terminal.ClientInputReader
 
 val echoCommand =
     { receiveBuffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket ->
@@ -36,6 +46,13 @@ val downloadCommand =
         println("#Download started")
         processUdpDownload(address, port, socket)
         println("#Download completed")
+    }
+
+val uploadCommand =
+    { _: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket ->
+        println("#Upnload started")
+
+        println("#Upnload completed")
     }
 
 private fun getSegmentId(packet: ByteArray, numberSize: Int): Int {
@@ -82,7 +99,7 @@ fun getUdpCommand(clientIn: ClientInputReader): Pair<String, (ByteArray, InetAdd
         if (!validCommand) {
             println(
                 "Invalid command. Valid commands are: \n" +
-                        commands.keys.joinToString("\n")
+                    commands.keys.joinToString("\n")
             )
         }
     }
@@ -121,9 +138,6 @@ private fun processUdpDownload(
 
     val filename = receiveString()
     var startFrom = receiveString().toLong()
-
-
-
 
     val shelvedChunks = TreeMap<Int, ByteArray>()
     var currentChunk = 1

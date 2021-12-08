@@ -1,9 +1,9 @@
 package spolks.tcpclient.session
 
-import spolks.tcpclient.OK
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import spolks.tcpclient.OK
 
 val charset = Charsets.UTF_8
 

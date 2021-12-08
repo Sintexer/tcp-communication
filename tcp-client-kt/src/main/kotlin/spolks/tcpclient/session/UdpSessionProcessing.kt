@@ -1,13 +1,13 @@
 package spolks.tcpclient.session
 
+import java.net.DatagramSocket
+import java.net.InetAddress
 import spolks.tcpclient.CONTINUE
 import spolks.tcpclient.UDP_DEFAULT_SO_TIMEOUT
 import spolks.tcpclient.UDP_PACKET_SIZE
 import spolks.tcpclient.command.getUdpCommand
 import spolks.tcpclient.command.processPendingCommand
 import spolks.tcpclient.terminal.ClientInputReader
-import java.net.DatagramSocket
-import java.net.InetAddress
 
 class UdpSessionProcessing(
     private val ip: String,
@@ -45,7 +45,7 @@ class UdpSessionProcessing(
                     sendUdpReliably(command.first, ipAddress, port, clientSocket)
                     command.second(receivingBuffer, ipAddress, port, clientSocket)
                     running = !command.first.equals("SHUTDOWN", ignoreCase = true) &&
-                            !command.first.equals("EXIT", ignoreCase = true)
+                        !command.first.equals("EXIT", ignoreCase = true)
                 }
             }
         } catch (e: UdpConnectionException) {
@@ -62,5 +62,4 @@ class UdpSessionProcessing(
             true
         }
     }
-
 }

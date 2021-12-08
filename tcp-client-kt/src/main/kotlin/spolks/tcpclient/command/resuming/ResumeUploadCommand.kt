@@ -1,5 +1,8 @@
 package spolks.tcpclient.command.resuming
 
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
 import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
 import spolks.tcpclient.ERROR
 import spolks.tcpclient.OK
@@ -7,9 +10,6 @@ import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.terminal.ClientInputReader
 import spolks.tcpclient.utils.getFile
 import spolks.tcpclient.utils.uploadFile
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.io.File
 
 class ResumeUploadCommand : ResumingCommand {
     override fun execute(clientIn: ClientInputReader, input: DataInputStream, output: DataOutputStream) {

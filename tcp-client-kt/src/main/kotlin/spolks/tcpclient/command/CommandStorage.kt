@@ -1,10 +1,18 @@
 package spolks.tcpclient.command
 
-import spolks.tcpclient.command.impl.*
+import java.util.*
+import spolks.tcpclient.command.impl.DisconnectCommand
+import spolks.tcpclient.command.impl.DownloadCommand
+import spolks.tcpclient.command.impl.EchoCommand
+import spolks.tcpclient.command.impl.EmptyCommand
+import spolks.tcpclient.command.impl.HelpCommand
+import spolks.tcpclient.command.impl.ShowFilesCommand
+import spolks.tcpclient.command.impl.ShutdownCommand
+import spolks.tcpclient.command.impl.TimeCommand
+import spolks.tcpclient.command.impl.UploadCommand
 import spolks.tcpclient.command.resuming.ResumeDownloadCommand
 import spolks.tcpclient.command.resuming.ResumeUploadCommand
 import spolks.tcpclient.command.resuming.ResumingCommand
-import java.util.*
 
 object CommandStorage {
     private val commands: MutableMap<CommandName, () -> Command> = EnumMap(CommandName::class.java)
