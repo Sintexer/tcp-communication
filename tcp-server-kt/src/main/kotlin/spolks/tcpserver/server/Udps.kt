@@ -69,6 +69,12 @@ fun receivePacket(buffer: ByteArray, address: InetAddress, port: Int, socket: Da
     return String(packet.data, 0, packet.length)
 }
 
+fun receiveFilePacket(buffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket): Int {
+    val packet = DatagramPacket(buffer, buffer.size, address, port)
+    socket.receive(packet)
+    return packet.length
+}
+
 fun sendPacket(payload: String, address: InetAddress, port: Int, socket: DatagramSocket) {
     val buffer = payload.toByteArray()
     val packet = DatagramPacket(buffer, buffer.size, address, port)
@@ -96,6 +102,10 @@ fun receiveFileAck(address: InetAddress, port: Int, socket: DatagramSocket): Int
 
 fun sendAck(address: InetAddress, port: Int, socket: DatagramSocket) {
     return sendPacket(OK, address, port, socket)
+}
+
+fun sendFileAck(id: Int, address: InetAddress, port: Int, socket: DatagramSocket) {
+    sendPacket(id.toString(), address, port, socket)
 }
 
 fun dropPacket(address: InetAddress, port: Int, socket: DatagramSocket): Boolean {

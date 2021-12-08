@@ -76,7 +76,7 @@ abstract class FileCommand : Command {
                 val bitrate = FileInfoStorage.getDownloadInfo(clientId)!!.bytesTransferred / timeSpent
                 output.writeLong(bitrate)
                 println("#Download bitrate is: $bitrate")
-                FileInfoStorage.removeDetails(clientId)
+                FileInfoStorage.removeDownloadDetails(clientId)
             }
         }
     }
@@ -111,6 +111,6 @@ abstract class FileCommand : Command {
         output.writeLong(bitrate)
         println("#Upload finished")
         println("#Upload bitrate is: $bitrate")
-        FileInfoStorage.removeDetails(clientId)
+        FileInfoStorage.removeDownloadDetails(clientId)
     }
 }

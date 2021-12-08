@@ -14,13 +14,10 @@ class MonoThreadUdpServer(
 
     override fun run() {
         try {
-            DatagramSocket(port).use { server ->
                 do {
                     println("#Waiting for UDP client connection")
-                    server.soTimeout = 10_000_000
-                    shutdown = UdpSessionProcessing(server).run()
+                    shutdown = UdpSessionProcessing(port).run()
                 } while (!shutdown)
-            }
         } catch (e: IOException) {
             println("#Server exception occurred: $e")
             e.printStackTrace()

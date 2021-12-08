@@ -10,5 +10,6 @@ object FileInfoStorage {
     fun putDownloadInfo(clientId: Int, fileInfo: FileInfo) = downloadStorage.put(clientId, fileInfo)
     fun getUploadInfo(clientId: Int) = uploadStorage[clientId]
     fun putUploadInfo(clientId: Int, fileInfo: FileInfo) = uploadStorage.put(clientId, fileInfo)
-    fun removeDetails(clientId: Int) = downloadStorage.remove(clientId)
+    fun removeDownloadDetails(clientId: Int) = downloadStorage.remove(clientId)
+    fun removeUploadDetails(clientId: Int) = uploadStorage.remove(clientId)
 }

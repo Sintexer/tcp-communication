@@ -1,12 +1,36 @@
 package spolks.tcpserver.command
 
-import spolks.tcpserver.*
+import spolks.tcpserver.ERROR
+import spolks.tcpserver.OK
+import spolks.tcpserver.RESOURCES_FOLDER
+import spolks.tcpserver.UDP_DEFAULT_SO_TIMEOUT
+import spolks.tcpserver.UDP_DOWNLOAD_SO_TIMEOUT
+import spolks.tcpserver.UDP_MAX_WAIT_FAILS
+import spolks.tcpserver.UDP_MAX_WINDOW
+import spolks.tcpserver.UDP_MIN_WINDOW
+import spolks.tcpserver.UDP_NUMBER_SIZE
+import spolks.tcpserver.UDP_PACKET_SIZE
 import spolks.tcpserver.command.impl.exception.CommandFlowException
 import spolks.tcpserver.command.impl.exception.IllegalCommandArgsException
 import spolks.tcpserver.files.FileInfo
 import spolks.tcpserver.files.FileInfoStorage
-import spolks.tcpserver.server.*
-import java.io.*
+import spolks.tcpserver.server.ServerAction
+import spolks.tcpserver.server.receiveAck
+import spolks.tcpserver.server.receiveFileAck
+import spolks.tcpserver.server.receiveFilePacket
+import spolks.tcpserver.server.receivePacket
+import spolks.tcpserver.server.sendAck
+import spolks.tcpserver.server.sendFileAck
+import spolks.tcpserver.server.sendPacket
+import spolks.tcpserver.server.sendUdpReliably
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.lang.Integer.max
 import java.lang.Integer.min
 import java.net.DatagramSocket
@@ -17,6 +41,7 @@ import java.nio.file.Path
 import java.time.LocalDateTime
 import java.util.*
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 fun processUdpCommand(
     commandPayload: CommandPayload,
@@ -36,6 +61,7 @@ fun processUdpCommand(
         CommandName.TIME.name -> timeCommand(buffer, address, port, socket)
         CommandName.ECHO.name -> echoCommand(commandPayload, address, port, socket)
         CommandName.DOWNLOAD.name -> downloadCommand(commandPayload, address, port, socket, clientId)
+        CommandName.UPLOAD.name -> uploadCommand(commandPayload, address, port, socket, clientId)
         else -> ServerAction.CONTINUE
     }
 }
@@ -49,6 +75,7 @@ fun processPendingUdpCommand(
 ) {
     when (commandName.uppercase()) {
         CommandName.DOWNLOAD.name -> continueDownloadCommand(address, port, socket, clientId)
+        CommandName.UPLOAD.name -> continueUploadCommand(address, port, socket, clientId)
     }
 }
 
@@ -90,7 +117,13 @@ private fun downloadCommand(
     }
     sendUdpReliably(OK, address, port, socket)
 
-    processUdpFileDownload(filename, address, port, socket, file, 0, clientId)
+    try {
+        processUdpFileDownload(filename, address, port, socket, file, 0, clientId)
+        println("#Download successfully finished")
+    } catch (e: SocketTimeoutException) {
+        println("#Client have disconnected")
+        throw CommandFlowException(e.message ?: "Client have disconnected")
+    }
     return ServerAction.CONTINUE
 }
 
@@ -118,7 +151,135 @@ private fun continueDownloadCommand(
 
     sendUdpReliably(OK, address, port, socket)
 
-    processUdpFileDownload(filename, address, port, socket, file, fileInfo.bytesTransferred.toLong(), clientId)
+    try {
+        processUdpFileDownload(filename, address, port, socket, file, fileInfo.bytesTransferred.toLong(), clientId)
+        println("#Download successfully finished")
+    } catch (e: SocketTimeoutException) {
+        println("#Client have disconnected")
+    }
+}
+
+private fun uploadCommand(
+    commandPayload: CommandPayload,
+    address: InetAddress,
+    port: Int,
+    socket: DatagramSocket,
+    clientId: Int
+): ServerAction {
+    println("#Upload started")
+    try {
+        processUdpUpload(clientId, address, port, socket)
+    } catch (e: SocketTimeoutException) {
+        println("#Client have disconnected")
+        throw CommandFlowException(e.message ?: "Client have disconnected")
+    }
+    println("#Upload completed")
+    return ServerAction.CONTINUE
+}
+
+private fun continueUploadCommand(
+    address: InetAddress,
+    port: Int,
+    socket: DatagramSocket,
+    clientId: Int
+): ServerAction {
+    println("#Continue upload")
+    val fileInfo = FileInfoStorage.getUploadInfo(clientId)
+    if (fileInfo == null) {
+        println("Server can't find file info")
+        sendUdpReliably("$ERROR Server can't find file info", address, port, socket)
+    }
+    sendUdpReliably(OK, address, port, socket)
+    sendUdpReliably(fileInfo!!.fileName, address, port, socket)
+    try {
+        processUdpUpload(clientId, address, port, socket)
+        println("#Upload successfully completed")
+    } catch (e: SocketTimeoutException) {
+        println("#Client have disconnected")
+    }
+    return ServerAction.CONTINUE
+}
+
+private fun processUdpUpload(
+    clientId: Int,
+    address: InetAddress,
+    port: Int,
+    socket: DatagramSocket
+) {
+    val receiveBuffer = ByteArray(UDP_PACKET_SIZE)
+    fun send(packet: Any) = sendUdpReliably(packet.toString(), address, port, socket)
+    fun sendAck() = sendAck(address, port, socket)
+    fun sendFileAck(id: Int) = sendFileAck(id, address, port, socket)
+    fun receiveString() = receivePacket(receiveBuffer, address, port, socket).also { sendAck() }
+
+    val clientStatus = receiveString()
+    if (clientStatus != OK) {
+        println(clientStatus)
+        return
+    }
+    val filename = receiveString()
+    var startFrom = FileInfoStorage.getUploadInfo(clientId)?.bytesTransferred?.toLong()
+    val file = if (startFrom != null && startFrom != 0L) {
+        val existingFile = getFile(filename)
+        if (!existingFile.exists()) {
+            sendUdpReliably("$ERROR file not found", address, port, socket)
+            throw CommandFlowException("$ERROR file not found, can't continue download")
+        } else existingFile
+    } else {
+        createFile(filename)
+    }
+    startFrom = if (startFrom == null) 0L else file.length()
+
+    send(startFrom)
+    val fileSize = receiveString().toLong()
+    val segmentSize = receiveString().toInt()
+    val bufferSize = segmentSize - UDP_NUMBER_SIZE
+    val segmentsAmount = ceil((fileSize.toDouble() - startFrom) / bufferSize).toInt()
+
+    send(segmentsAmount)
+    send(UDP_NUMBER_SIZE)
+
+    println("filename: $filename, number of segments: $segmentsAmount, number size:  $UDP_NUMBER_SIZE, start from byte: $startFrom, segmentSize: $segmentSize")
+
+    val buffer = ByteArray(segmentSize)
+
+    fun receiveFileChunk() =
+        receiveFilePacket(buffer, address, port, socket).also { sendFileAck(getSegmentId(buffer, UDP_NUMBER_SIZE)) }
+
+    val shelvedChunks = TreeMap<Int, ByteArray>()
+    var currentChunk = 1
+    val fileOut: OutputStream = BufferedOutputStream(FileOutputStream(file, startFrom != 0L))
+    val startAt = Date().time
+    fileOut.use {
+        FileInfoStorage.putUploadInfo(clientId, FileInfo(filename, startFrom.toInt()))
+        while (currentChunk <= segmentsAmount || shelvedChunks.isNotEmpty()) {
+            val packetSize = receiveFileChunk()
+            val chunkId = getSegmentId(buffer, UDP_NUMBER_SIZE)
+            sendFileAck(chunkId)
+            if (chunkId >= currentChunk && !shelvedChunks.containsKey(chunkId)) {
+                shelvedChunks[chunkId] = buffer.copyOf()
+            }
+            while (shelvedChunks.containsKey(currentChunk)) {
+                val bytesWritten = packetSize - UDP_NUMBER_SIZE
+                fileOut.write(shelvedChunks[currentChunk]!!, UDP_NUMBER_SIZE, bytesWritten)
+                sendFileAck(currentChunk)
+                FileInfoStorage.putUploadInfo(
+                    clientId,
+                    FileInfo(filename, FileInfoStorage.getUploadInfo(clientId)!!.bytesTransferred + bytesWritten)
+                )
+                shelvedChunks.remove(currentChunk)
+                ++currentChunk
+            }
+        }
+    }
+    val bitRate = (FileInfoStorage.getUploadInfo(clientId)!!.bytesTransferred - startFrom) /
+        (((Date().time - startAt + 1) / 1000) + 1).toDouble()
+    FileInfoStorage.removeUploadDetails(clientId)
+    println("#Upload bitrate is: ${bitRate.roundToInt()}")
+    sendFileAck(0)
+    socket.soTimeout = 10
+    socket.disconnect()
+    socket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
 }
 
 private fun processUdpFileDownload(
@@ -186,12 +347,12 @@ private fun processUdpFileDownload(
             try {
                 repeat(windowSize) {
                     val segmentAck = getAck()
-                    if(!acks.contains(segmentAck)){
+                    if (!acks.contains(segmentAck)) {
                         windowSize = min(windowSize + 1, UDP_MAX_WINDOW)
-//                        if(prevWindowSize != windowSize ) {
-//                            println("#Window size decreased: $windowSize")
-//                            prevWindowSize = windowSize
-//                        }
+                        if(prevWindowSize != windowSize ) {
+                            println("#Window size decreased: $windowSize")
+                            prevWindowSize = windowSize
+                        }
                         failsAmount = min(0, failsAmount - 1)
                     }
                     acks.add(segmentAck).also { finishedByClient = (segmentAck == 0) }
@@ -211,20 +372,25 @@ private fun processUdpFileDownload(
             } catch (e: SocketTimeoutException) {
                 ++failsAmount
                 windowSize = max(UDP_MIN_WINDOW, windowSize - 1)
-//                if(prevWindowSize != windowSize ) {
-//                    println("#Window size decreased: $windowSize")
-//                    prevWindowSize = windowSize
-//                }
+                if(prevWindowSize != windowSize ) {
+                    println("#Window size decreased: $windowSize")
+                    prevWindowSize = windowSize
+                }
             }
         }
         if (failsAmount >= UDP_MAX_WAIT_FAILS) {
             throw CommandFlowException("Client disconnected during download")
         }
-        val timeSpent = ((Date().time - startAt + 1) / 1000) + 1
-        println("#Download bitrate is: $timeSpent")
+        val bitRate = (FileInfoStorage.getDownloadInfo(clientId)!!.bytesTransferred - startFrom) /
+            (((Date().time - startAt + 1) / 1000) + 1).toDouble()
+        println("#Download bitrate is: ${bitRate.roundToInt()}")
     }
     socket.disconnect()
     socket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
+}
+
+private fun getSegmentId(packet: ByteArray, numberSize: Int): Int {
+    return String(packet, 0, packet.size).substring(0, numberSize).toInt()
 }
 
 fun getFile(filename: String): File {
@@ -249,5 +415,3 @@ fun getResourcesFolder(): File {
     }
     return File(RESOURCES_FOLDER)
 }
-
-

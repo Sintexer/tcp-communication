@@ -6,7 +6,7 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
+import spolks.tcpclient.TCP_SEGMENT_SIZE
 import spolks.tcpclient.ERROR
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.exception.CommandFlowException
@@ -20,7 +20,7 @@ class ResumeDownloadCommand : ResumingCommand {
         output.writeUTF(OK)
 
         output.writeLong(file.length())
-        val segmentSize = DEFAULT_SEGMENT_SIZE
+        val segmentSize = TCP_SEGMENT_SIZE
         output.writeInt(segmentSize)
         val segmentsToDownload = input.readInt()
         val startFrom = input.readLong()

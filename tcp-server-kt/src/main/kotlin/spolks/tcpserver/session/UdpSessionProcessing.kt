@@ -17,7 +17,7 @@ import java.net.InetAddress
 import java.net.SocketTimeoutException
 
 class UdpSessionProcessing(
-    private val socket: DatagramSocket
+    private val port: Int
 ) : Closeable {
 
 
@@ -25,6 +25,7 @@ class UdpSessionProcessing(
     private val sendingBuffer = ByteArray(UDP_PACKET_SIZE)
     private var clientIdCounter = 1
     private val localSessionsStorage = LocalSessionsStorage()
+    private lateinit var socket: DatagramSocket
 
     override fun close() {
 
@@ -41,14 +42,15 @@ class UdpSessionProcessing(
         while (running) {
             val packet = DatagramPacket(receivingBuffer, receivingBuffer.size)
             try {
+                socket = DatagramSocket(port)
                 socket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
                 socket.receive(packet).also { sendAck(packet.address, packet.port, socket) }
                 val address = packet.address
                 val port = packet.port
                 val desiredClientId = String(packet.data, 0, packet.length).toInt()
                 currentClientId =
-                    if (currentClientId != 0) currentClientId
-                    else if (desiredClientId != 0) desiredClientId
+                    if (desiredClientId != 0) desiredClientId
+                    else if (currentClientId != 0) currentClientId
                     else clientIdCounter++
                 println("Client id: $currentClientId")
                 sendUdpReliably(currentClientId.toString(), address, port, socket)
@@ -60,12 +62,15 @@ class UdpSessionProcessing(
                 println("#Client  sent: $received")
 
                 previousAction = processCommand(received, address, port, currentClientId)
+
             } catch (e: CommandFlowException) {
                 println(e.message)
             } catch (e: SocketTimeoutException) {
-                println("Client didn't reconnect")
+                currentClientId = 0
             } catch (e: IOException) {
                 println("#Client error occurred: $e")
+            } finally {
+                socket.close()
             }
             running = previousAction == ServerAction.CONTINUE
         }

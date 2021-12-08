@@ -5,6 +5,7 @@ import java.net.InetAddress
 import spolks.tcpclient.CONTINUE
 import spolks.tcpclient.UDP_DEFAULT_SO_TIMEOUT
 import spolks.tcpclient.UDP_PACKET_SIZE
+import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.command.getUdpCommand
 import spolks.tcpclient.command.processPendingCommand
 import spolks.tcpclient.terminal.ClientInputReader
@@ -41,11 +42,15 @@ class UdpSessionProcessing(
                     )
                 }.toInt()
                 println("Client id: $clientId")
-                if (processPendingCommand(ipAddress, port, clientSocket)) {
-                    sendUdpReliably(command.first, ipAddress, port, clientSocket)
-                    command.second(receivingBuffer, ipAddress, port, clientSocket)
-                    running = !command.first.equals("SHUTDOWN", ignoreCase = true) &&
-                        !command.first.equals("EXIT", ignoreCase = true)
+                try {
+                    if (processPendingCommand(ipAddress, port, clientSocket)) {
+                        sendUdpReliably(command.first, ipAddress, port, clientSocket)
+                        command.second(command.first, receivingBuffer, ipAddress, port, clientSocket)
+                        running = !command.first.equals("SHUTDOWN", ignoreCase = true) &&
+                                !command.first.equals("EXIT", ignoreCase = true)
+                    }
+                } catch (e: CommandFlowException) {
+                    println("#Command flow exception: $e")
                 }
             }
         } catch (e: UdpConnectionException) {

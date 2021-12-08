@@ -1,5 +1,6 @@
 package spolks.tcpclient.session
 
+import java.lang.NumberFormatException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -22,7 +23,7 @@ fun sendUdpReliably(
         good = try {
             ++count
             if (count > retries) {
-                throw UdpConnectionException("Превышено число попыток соединения с Udp сервером")
+                throw UdpConnectionException("Failed to send udp after $retries retries")
             }
             sendPacket(str, address, port, socket)
             receiveAck(address, port, socket)
@@ -49,7 +50,7 @@ fun sendUdpReliably(
         good = try {
             ++count
             if (count > retries) {
-                throw UdpConnectionException("Превышено число попыток соединения с Udp клиентом")
+                throw UdpConnectionException("Failed to send udp after $retries retries")
             }
             sendPacket(packet, address, port, socket)
             receiveAck(address, port, socket)
@@ -81,8 +82,8 @@ fun sendPacket(payload: String, address: InetAddress, port: Int, socket: Datagra
     socket.send(packet)
 }
 
-fun sendPacket(packet: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket) {
-    val pack = DatagramPacket(packet, packet.size, address, port)
+fun sendPacket(packet: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket, packetSize: Int = packet.size) {
+    val pack = DatagramPacket(packet, packetSize, address, port)
     socket.send(pack)
 }
 
@@ -95,7 +96,14 @@ fun receiveAck(address: InetAddress, port: Int, socket: DatagramSocket): Boolean
 
 fun receiveFileAck(address: InetAddress, port: Int, socket: DatagramSocket): Int {
     val buffer = ByteArray(64)
-    return buffer.toString().toInt()
+    val packet = DatagramPacket(buffer, buffer.size, address, port)
+    socket.receive(packet)
+    val str = String(buffer, 0, packet.length)
+    return try {
+        str.toInt()
+    } catch (e: NumberFormatException) {
+        -1
+    }
 }
 
 fun sendFileAck(id: Int, address: InetAddress, port: Int, socket: DatagramSocket) {

@@ -3,7 +3,7 @@ package spolks.tcpclient.command.resuming
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
-import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
+import spolks.tcpclient.TCP_SEGMENT_SIZE
 import spolks.tcpclient.ERROR
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.exception.CommandFlowException
@@ -21,7 +21,7 @@ class ResumeUploadCommand : ResumingCommand {
         val file = checkResumeUploadPreconditions(filename, alreadyTransferred, output)
         val fileLength = file.length()
         output.writeLong(fileLength)
-        val segmentSize = DEFAULT_SEGMENT_SIZE
+        val segmentSize = TCP_SEGMENT_SIZE
         output.writeInt(segmentSize)
         val segmentsAmount = input.readInt()
         val startFrom = input.readLong()

@@ -5,7 +5,7 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.FileOutputStream
 import java.io.OutputStream
-import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
+import spolks.tcpclient.TCP_SEGMENT_SIZE
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.CommandAndArgs
 import spolks.tcpclient.command.exception.CommandFlowException
@@ -29,7 +29,7 @@ class DownloadCommand : FileCommand() {
         val filename = input.readUTF()
 
         val file = createFile(filename)
-        val segmentSize = DEFAULT_SEGMENT_SIZE
+        val segmentSize = TCP_SEGMENT_SIZE
         output.writeInt(segmentSize)
         val segmentsToDownload = input.readInt()
         val startFrom = input.readLong()

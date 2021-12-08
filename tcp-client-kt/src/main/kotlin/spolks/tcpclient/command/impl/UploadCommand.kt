@@ -3,7 +3,7 @@ package spolks.tcpclient.command.impl
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
-import spolks.tcpclient.DEFAULT_SEGMENT_SIZE
+import spolks.tcpclient.TCP_SEGMENT_SIZE
 import spolks.tcpclient.OK
 import spolks.tcpclient.command.CommandAndArgs
 import spolks.tcpclient.command.exception.CommandFlowException
@@ -28,7 +28,7 @@ class UploadCommand : FileCommand() {
         }
         val fileSize = file.length()
         output.writeLong(fileSize)
-        val segmentSize = DEFAULT_SEGMENT_SIZE
+        val segmentSize = TCP_SEGMENT_SIZE
         output.writeInt(segmentSize)
         val segmentsAmount = input.readInt()
         val startFrom = input.readLong()
