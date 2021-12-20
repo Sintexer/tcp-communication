@@ -24,7 +24,6 @@ class UdpSessionProcessing(
     private val receivingBuffer = ByteArray(UDP_PACKET_SIZE)
     private val sendingBuffer = ByteArray(UDP_PACKET_SIZE)
     private var clientIdCounter = 1
-    private val localSessionsStorage = LocalSessionsStorage()
     private lateinit var socket: DatagramSocket
 
     override fun close() {
@@ -80,17 +79,17 @@ class UdpSessionProcessing(
     private fun processCommand(command: String, address: InetAddress, port: Int, clientId: Int): ServerAction {
         val commandPayload = parseCommandPayload(command, 0)
         val commandName = parseCommandName(commandPayload.commandName)
-        localSessionsStorage.getInfo(clientId).apply { this.command = commandName; this.status = CommandStatus.IN_PROGRESS }
+        SessionsStorage.getInfo(clientId).apply { this.command = commandName; this.status = CommandStatus.IN_PROGRESS }
         val state = processUdpCommand(commandPayload, receivingBuffer, address, port, socket, clientId)
-        localSessionsStorage.getInfo(clientId).apply { this.status = CommandStatus.COMPLETED }
+        SessionsStorage.getInfo(clientId).apply { this.status = CommandStatus.COMPLETED }
         return state
     }
 
     private fun processPendingCommand(address: InetAddress, port: Int, clientId: Int) {
-        if (localSessionsStorage.getInfo(clientId).status != CommandStatus.COMPLETED) {
-            val commandName = localSessionsStorage.getInfo(clientId).command
+        if (SessionsStorage.getInfo(clientId).status != CommandStatus.COMPLETED) {
+            val commandName = SessionsStorage.getInfo(clientId).command
             sendUdpReliably(commandName.name, address, port, socket)
-            localSessionsStorage.getInfo(clientId)
+            SessionsStorage.getInfo(clientId)
                 .apply { this.command = commandName; this.status = CommandStatus.COMPLETED }
             processPendingUdpCommand(commandName.name, address, port, socket, clientId)
         } else {

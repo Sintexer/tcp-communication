@@ -5,6 +5,7 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import spolks.tcpserver.server.MonoThreadServer
 import spolks.tcpserver.server.MonoThreadUdpServer
+import spolks.tcpserver.server.MultiThreadUdpServer
 
 fun main(args: Array<String>) {
     val parser = ArgParser("tcp-server")
@@ -14,6 +15,6 @@ fun main(args: Array<String>) {
     if(!isUdp.value) {
         MonoThreadServer(port.value).run()
     } else {
-        MonoThreadUdpServer(port.value).run()
+        MultiThreadUdpServer(port.value).run()
     }
 }

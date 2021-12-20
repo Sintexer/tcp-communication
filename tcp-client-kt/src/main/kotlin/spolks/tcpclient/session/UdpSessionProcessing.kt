@@ -1,7 +1,5 @@
 package spolks.tcpclient.session
 
-import java.net.DatagramSocket
-import java.net.InetAddress
 import spolks.tcpclient.CONTINUE
 import spolks.tcpclient.UDP_DEFAULT_SO_TIMEOUT
 import spolks.tcpclient.UDP_PACKET_SIZE
@@ -9,6 +7,8 @@ import spolks.tcpclient.command.exception.CommandFlowException
 import spolks.tcpclient.command.getUdpCommand
 import spolks.tcpclient.command.processPendingCommand
 import spolks.tcpclient.terminal.ClientInputReader
+import java.net.DatagramSocket
+import java.net.InetAddress
 
 class UdpSessionProcessing(
     private val ip: String,
@@ -26,29 +26,30 @@ class UdpSessionProcessing(
     private fun processWorkLoop(desiredClientId: Int) {
         val ipAddress = InetAddress.getByName(ip)
         var running = true
-        var clientId = 0
+        var clientId = desiredClientId
         try {
             while (running) {
                 val clientSocket = DatagramSocket()
                 clientSocket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
                 val command = getUdpCommand(clientIn)
-                clientId = if (desiredClientId == 0) clientId else desiredClientId
-                sendUdpReliably(clientId.toString(), ipAddress, port, clientSocket)
-                clientId = receivePacket(receivingBuffer, ipAddress, port, clientSocket).also {
-                    sendAck(
-                        ipAddress,
-                        port,
-                        clientSocket
-                    )
-                }.toInt()
-                println("Client id: $clientId")
+                if (clientId == 0) {
+                    sendUdpReliably(clientId.toString(), ipAddress, port, clientSocket)
+                    clientId = receivePacket(receivingBuffer, ipAddress, port, clientSocket).also {
+                        sendAck(
+                            ipAddress,
+                            port,
+                            clientSocket
+                        )
+                    }.toInt()
+                    println("Client id: $clientId")
+                }
                 try {
-                    if (processPendingCommand(ipAddress, port, clientSocket)) {
-                        sendUdpReliably(command.first, ipAddress, port, clientSocket)
-                        command.second(command.first, receivingBuffer, ipAddress, port, clientSocket)
+//                    if (processPendingCommand(ipAddress, port, clientSocket)) {
+                        sendUdpReliably(command.first, ipAddress, port, clientSocket, clientId = clientId)
+//                        command.second(command.first, receivingBuffer, ipAddress, port, clientSocket)
                         running = !command.first.equals("SHUTDOWN", ignoreCase = true) &&
-                                !command.first.equals("EXIT", ignoreCase = true)
-                    }
+                            !command.first.equals("EXIT", ignoreCase = true)
+//                    }
                 } catch (e: CommandFlowException) {
                     println("#Command flow exception: $e")
                 }

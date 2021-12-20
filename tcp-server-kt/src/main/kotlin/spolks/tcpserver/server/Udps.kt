@@ -5,6 +5,7 @@ import spolks.tcpserver.UDP_MAX_WAIT_FAILS
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import spolks.tcpserver.UDP_CLIENT_ID_SIZE
 
 class UdpConnectionException(message: String): Exception(message)
 
@@ -88,7 +89,7 @@ fun sendPacket(packet: ByteArray, address: InetAddress, port: Int, socket: Datag
 
 fun receiveAck(address: InetAddress, port: Int, socket: DatagramSocket): Boolean {
     val buffer = ByteArray(1024)
-    val msg = receivePacket(buffer, address, port, socket)
+    val msg = receivePacket(buffer, address, port, socket).substring(UDP_CLIENT_ID_SIZE)
     if(msg != OK) println(msg)
     return msg == OK
 }
@@ -119,4 +120,8 @@ fun dropPacket(address: InetAddress, port: Int, socket: DatagramSocket): Boolean
     } finally {
         socket.soTimeout = prevSoTimeout
     }
+}
+
+fun getClientId(packet: ByteArray): Int {
+    return String(packet, 0, packet.size).substring(0, UDP_CLIENT_ID_SIZE).toInt()
 }

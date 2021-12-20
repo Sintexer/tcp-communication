@@ -5,6 +5,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import spolks.tcpclient.OK
+import spolks.tcpclient.UDP_CLIENT_ID_SIZE
 
 val charset = Charsets.UTF_8
 
@@ -15,7 +16,8 @@ fun sendUdpReliably(
     address: InetAddress,
     port: Int,
     socket: DatagramSocket,
-    retries: Int = 5
+    retries: Int = 5,
+    clientId: Int = 0
 ) {
     var good = false
     var count = 0
@@ -25,7 +27,7 @@ fun sendUdpReliably(
             if (count > retries) {
                 throw UdpConnectionException("Failed to send udp after $retries retries")
             }
-            sendPacket(str, address, port, socket)
+            sendPacket(str, address, port, socket, clientId = clientId)
             receiveAck(address, port, socket)
             true
         } catch (e: UdpConnectionException) {
@@ -76,8 +78,9 @@ fun receiveFilePacket(buffer: ByteArray, address: InetAddress, port: Int, socket
     return packet.length
 }
 
-fun sendPacket(payload: String, address: InetAddress, port: Int, socket: DatagramSocket) {
-    val buf = payload.toByteArray()
+fun sendPacket(payload: String, address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int = 0) {
+    val clientIdString = clientId.toString().padStart(UDP_CLIENT_ID_SIZE, '0')
+    val buf = "$clientIdString$payload".toByteArray()
     val packet = DatagramPacket(buf, buf.size, address, port)
     socket.send(packet)
 }
