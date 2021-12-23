@@ -34,33 +34,34 @@ import java.net.SocketTimeoutException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
+import spolks.tcpclient.UDP_CLIENT_ID_SIZE
 
 val echoCommand =
-    { _: String, receiveBuffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket ->
+    { _: String, receiveBuffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int ->
         val message = receivePacket(receiveBuffer, address, port, socket)
-        sendAck(address, port, socket)
+//        sendAck(address, port, socket, clientId)
         println("Server sent: $message")
     }
 
 val timeCommand =
-    { _: String, receiveBuffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket ->
+    { _: String, receiveBuffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket, _: Int ->
         val message = receivePacket(receiveBuffer, address, port, socket)
         sendAck(address, port, socket)
         println("Server time: $message")
     }
 
 val emptyCommand =
-    { _: String, _: ByteArray, _: InetAddress, _: Int, _: DatagramSocket -> }
+    { _: String, _: ByteArray, _: InetAddress, _: Int, _: DatagramSocket, _: Int -> }
 
 val downloadCommand =
-    { _: String, _: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket ->
+    { _: String, _: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int ->
         println("#Download started")
-        processUdpDownload(address, port, socket)
+        processUdpDownload(address, port, socket, clientId)
         println("#Download completed")
     }
 
 val uploadCommand =
-    { commandName: String, _: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket ->
+    { commandName: String, _: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket, _: Int ->
         println("#Upload started")
         if (!commandName.contains(" ")) {
             sendUdpReliably("$ERROR No filename provided", address, port, socket)
@@ -73,8 +74,8 @@ val uploadCommand =
         println("#Upload completed")
     }
 
-private fun getSegmentId(packet: ByteArray, numberSize: Int): Int {
-    return String(packet, 0, packet.size).substring(0, numberSize).toInt()
+private fun getSegmentId(packet: ByteArray, numberSize: Int, offset: Int = 0): Int {
+    return String(packet, 0, packet.size).substring(offset, numberSize).toInt()
 }
 
 private fun createFile(filename: String): File {
@@ -107,7 +108,7 @@ val commands = mapOf(
     "upload" to uploadCommand
 )
 
-fun getUdpCommand(clientIn: ClientInputReader): Pair<String, (String, ByteArray, InetAddress, Int, DatagramSocket) -> Unit> {
+fun getUdpCommand(clientIn: ClientInputReader): Pair<String, (String, ByteArray, InetAddress, Int, DatagramSocket, Int) -> Unit> {
     var validCommand = false
     var input = ""
     var command = ""
@@ -125,16 +126,16 @@ fun getUdpCommand(clientIn: ClientInputReader): Pair<String, (String, ByteArray,
     return Pair(input, commands[command]!!)
 }
 
-fun processPendingCommand(commandName: String, address: InetAddress, port: Int, socket: DatagramSocket) {
+fun processPendingCommand(commandName: String, address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int) {
     when (commandName.lowercase()) {
-        "download" -> continueDownloadCommand(address, port, socket)
+        "download" -> continueDownloadCommand(address, port, socket, clientId)
         "upload" -> continueUploadCommand(address, port, socket)
     }
 }
 
-fun continueDownloadCommand(address: InetAddress, port: Int, socket: DatagramSocket) {
+fun continueDownloadCommand(address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int) {
     println("#Continue Download")
-    processUdpDownload(address, port, socket)
+    processUdpDownload(address, port, socket, clientId)
     println("#Download successfully completed")
 }
 
@@ -155,16 +156,17 @@ fun continueUploadCommand(address: InetAddress, port: Int, socket: DatagramSocke
 private fun processUdpDownload(
     address: InetAddress,
     port: Int,
-    socket: DatagramSocket
+    socket: DatagramSocket,
+    clientId: Int = 0
 ) {
     val receiveBuffer = ByteArray(UDP_PACKET_SIZE)
-    fun send(packet: Any) = sendUdpReliably(packet.toString(), address, port, socket)
+    fun send(packet: Any) = sendUdpReliably(packet.toString(), address, port, socket, clientId = clientId)
     fun sendAck() = sendAck(address, port, socket)
-    fun sendFileAck(id: Int) = sendFileAck(id, address, port, socket)
-    fun receiveString() = receivePacket(receiveBuffer, address, port, socket).also { sendAck() }
+    fun sendFileAck(id: Int) = sendFileAck(id, address, port, socket, clientId)
+    fun receiveString() = receivePacket(receiveBuffer, address, port, socket)
 
 //  socket.soTimeout = UDP_DOWNLOAD_SO_TIMEOUT
-    val serverIsFine = receiveAck(address, port, socket).also { sendAck(address, port, socket) }
+    val serverIsFine = receiveAck(address, port, socket)
 
     if (!serverIsFine) {
         throw CommandFlowException("Server error")
@@ -185,8 +187,8 @@ private fun processUdpDownload(
         createFile(filename)
     }
     startFrom = file.length()
-    sendUdpReliably(OK, address, port, socket)
-    sendUdpReliably(startFrom.toString(), address, port, socket)
+    send(OK)
+    send(startFrom.toString())
     val segmentSize = DEFAULT_SEGMENT_SIZE
     send(segmentSize)
     val segmentsAmount = receiveString().toInt()
@@ -204,7 +206,6 @@ private fun processUdpDownload(
         while (currentChunk <= segmentsAmount || shelvedChunks.isNotEmpty()) {
             val packetSize = receiveFileChunk()
             val chunkId = getSegmentId(buffer, numberSize)
-            sendFileAck(chunkId)
             if (chunkId >= currentChunk && !shelvedChunks.containsKey(chunkId)) {
                 shelvedChunks[chunkId] = buffer.copyOf()
             }
@@ -217,7 +218,7 @@ private fun processUdpDownload(
         }
     }
     sendFileAck(0)
-    socket.disconnect()
+
     socket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
 }
 

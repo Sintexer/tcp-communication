@@ -27,10 +27,11 @@ class UdpSessionProcessing(
         val ipAddress = InetAddress.getByName(ip)
         var running = true
         var clientId = desiredClientId
+        var clientSocket = DatagramSocket()
+        clientSocket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
         try {
             while (running) {
-                val clientSocket = DatagramSocket()
-                clientSocket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
+
                 val command = getUdpCommand(clientIn)
                 if (clientId == 0) {
                     sendUdpReliably(clientId.toString(), ipAddress, port, clientSocket)
@@ -44,14 +45,16 @@ class UdpSessionProcessing(
                     println("Client id: $clientId")
                 }
                 try {
-//                    if (processPendingCommand(ipAddress, port, clientSocket)) {
-                        sendUdpReliably(command.first, ipAddress, port, clientSocket, clientId = clientId)
-//                        command.second(command.first, receivingBuffer, ipAddress, port, clientSocket)
+                    sendUdpReliably(command.first, ipAddress, port, clientSocket, clientId = clientId)
+                    if (processPendingCommand(ipAddress, port, clientSocket, clientId)) {
+                        command.second(command.first, receivingBuffer, ipAddress, port, clientSocket, clientId)
                         running = !command.first.equals("SHUTDOWN", ignoreCase = true) &&
                             !command.first.equals("EXIT", ignoreCase = true)
-//                    }
+                    }
                 } catch (e: CommandFlowException) {
                     println("#Command flow exception: $e")
+                } finally {
+                    while (dropPacket(ipAddress, port, clientSocket)){}
                 }
             }
         } catch (e: UdpConnectionException) {
@@ -59,10 +62,10 @@ class UdpSessionProcessing(
         }
     }
 
-    private fun processPendingCommand(address: InetAddress, port: Int, socket: DatagramSocket): Boolean {
-        val action = receivePacket(receivingBuffer, address, port, socket).also { sendAck(address, port, socket) }
+    private fun processPendingCommand(address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int): Boolean {
+        val action = receivePacket(receivingBuffer, address, port, socket)
         return if (action != CONTINUE) {
-            processPendingCommand(action, address, port, socket)
+            processPendingCommand(action, address, port, socket, clientId)
             false
         } else {
             true

@@ -109,12 +109,12 @@ fun receiveFileAck(address: InetAddress, port: Int, socket: DatagramSocket): Int
     }
 }
 
-fun sendFileAck(id: Int, address: InetAddress, port: Int, socket: DatagramSocket) {
-    sendPacket(id.toString(), address, port, socket)
+fun sendFileAck(id: Int, address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int = 0) {
+    sendPacket(id.toString(), address, port, socket, clientId)
 }
 
-fun sendAck(address: InetAddress, port: Int, socket: DatagramSocket) {
-    return sendPacket(OK, address, port, socket)
+fun sendAck(address: InetAddress, port: Int, socket: DatagramSocket, clientId: Int = 0) {
+    return sendPacket(OK, address, port, socket, clientId)
 }
 
 fun dropPacket(address: InetAddress, port: Int, socket: DatagramSocket): Boolean {
@@ -129,3 +129,5 @@ fun dropPacket(address: InetAddress, port: Int, socket: DatagramSocket): Boolean
         socket.soTimeout = prevSoTimeout
     }
 }
+
+fun Int.toPadString() = this.toString().padStart(UDP_CLIENT_ID_SIZE, '0')

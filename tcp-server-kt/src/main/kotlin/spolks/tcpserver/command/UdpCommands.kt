@@ -54,10 +54,10 @@ fun processUdpCommand(
 ): ServerAction {
     return when (commandPayload.commandName.uppercase()) {
         CommandName.SHUTDOWN.name -> {
-            sendAck(address, port, socket); ServerAction.SHUTDOWN
+            ServerAction.SHUTDOWN
         }
         CommandName.EXIT.name -> {
-            sendAck(address, port, socket); ServerAction.EXIT
+            ServerAction.EXIT
         }
         CommandName.TIME.name -> timeCommand(buffer, address, port, socket)
         CommandName.ECHO.name -> echoCommand(commandPayload, address, port, socket)
@@ -82,7 +82,6 @@ fun processPendingUdpCommand(
 
 private fun timeCommand(buffer: ByteArray, address: InetAddress, port: Int, socket: DatagramSocket): ServerAction {
     sendPacket(LocalDateTime.now().toString(), address, port, socket)
-    if (!receiveAck(address, port, socket)) throw UdpAckException("Ack wasn't received")
     return ServerAction.CONTINUE
 }
 
@@ -93,7 +92,7 @@ private fun echoCommand(
     socket: DatagramSocket
 ): ServerAction {
     val payload = commandPayload.commandWithArgs.substring(commandPayload.commandName.length)
-    sendUdpReliably(payload, address, port, socket)
+    sendPacket(payload, address, port, socket)
     return ServerAction.CONTINUE
 }
 
@@ -106,20 +105,20 @@ private fun downloadCommand(
 ): ServerAction {
     println("#Download started")
     if (commandPayload.commandName == commandPayload.commandWithArgs.trim()) {
-        sendUdpReliably("$ERROR No filename provided", address, port, socket)
+        sendPacket("$ERROR No filename provided", address, port, socket)
         throw IllegalCommandArgsException("No filename provided")
     }
     val filename = commandPayload.commandWithArgs.substring(commandPayload.commandName.length + 1)
 
     val file = getFile(filename)
     if (!file.exists()) {
-        sendUdpReliably("$ERROR file not found", address, port, socket)
+        sendPacket("$ERROR file not found", address, port, socket)
         throw FileNotFoundException("File with name $filename wasn't found")
     }
-    sendUdpReliably(OK, address, port, socket)
+    sendPacket(OK, address, port, socket)
 
     try {
-        processUdpFileDownload(filename, address, port, socket, file, 0, clientId)
+//        processUdpFileDownload(filename, address, port, socket, file, 0, clientId)
         println("#Download successfully finished")
     } catch (e: SocketTimeoutException) {
         println("#Client have disconnected")

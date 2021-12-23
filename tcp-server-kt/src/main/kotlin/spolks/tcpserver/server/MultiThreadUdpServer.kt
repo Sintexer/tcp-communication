@@ -14,6 +14,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import spolks.tcpserver.command.CommandName
 import kotlin.math.roundToInt
 
 class MultiThreadUdpServer(
@@ -33,10 +34,11 @@ class MultiThreadUdpServer(
 
     override fun run() {
         try {
+            println("#Waiting for UDP client connection")
             do {
                 try {
                     unprocessedMessages.forEach { (clientId, queue) ->
-                        if (!queue.isEmpty() && !SessionsStorage.isInProgress(clientId)) {
+                        if (!SessionsStorage.isInProgress(clientId) && !queue.isEmpty()) {
                             UdpThread(
                                 clientId,
                                 SessionsStorage.getClientInfo(clientId)!!.address,
@@ -46,21 +48,12 @@ class MultiThreadUdpServer(
                             ).start()
                         }
                     }
-                    println("#Waiting for UDP client connection")
-                    val packet = DatagramPacket(receivingBuffer, receivingBuffer.size)
-                    val clientId = resolveClientId(packet)
-                    socket.soTimeout = UDP_DEFAULT_SO_TIMEOUT
 
-//                    if (!SessionsStorage.isInProgress(clientId)) {
-//                        println("Client id: $clientId")
-//                        UdpThread(clientId, packet.address, packet.port, socket, unprocessedMessages).start()
-//                    }
-
-
+                    resolveClientId()
 
                     TimeUnit.NANOSECONDS.sleep(10)
                 } catch (e: SocketTimeoutException) {
-                    socket.soTimeout = (socket.soTimeout * 1.5).roundToInt()
+                    socket.soTimeout = (UDP_DEFAULT_SO_TIMEOUT.toDouble() / 10).roundToInt()
                 }
             } while (!shutdown)
         } catch (e: IOException) {
@@ -69,13 +62,17 @@ class MultiThreadUdpServer(
         }
     }
 
-    private fun resolveClientId(packet: DatagramPacket): Int {
-        socket.receive(packet).also { sendAck(packet.address, packet.port, socket) }
+    private fun resolveClientId(): Int {
+        val packet = DatagramPacket(receivingBuffer, receivingBuffer.size)
+        socket.receive(packet)
         val desiredClientId = getClientId(packet.data)
-        val clientId = if (desiredClientId != 0) desiredClientId
-        else clientIdCounter++
-        if (!SessionsStorage.has(clientId)) {
-            SessionsStorage.putClientInfo(clientId, ClientData(packet.address, packet.port))
+        val clientId = if (desiredClientId != 0) desiredClientId else clientIdCounter++
+        if(SessionsStorage.isAckTransfer(clientId)) {
+            sendAck(packet.address, packet.port, socket)
+        }
+        SessionsStorage.putClientInfo(clientId, ClientData(packet.address, packet.port))
+//        println(">>Updating client details: ${SessionsStorage.getClientInfo(clientId)}")
+        if (desiredClientId == 0) {
             sendUdpReliably(clientId.toString(), packet.address, packet.port, socket)
         } else {
             unprocessedMessages.computeIfAbsent(clientId) { ArrayBlockingQueue(UDP_QUEUE_CAPACITY) }

@@ -94,6 +94,12 @@ fun receiveAck(address: InetAddress, port: Int, socket: DatagramSocket): Boolean
     return msg == OK
 }
 
+fun receiveAck(message: String): Boolean {
+    val msg = message.substring(UDP_CLIENT_ID_SIZE)
+    if(msg != OK) println(msg)
+    return msg == OK
+}
+
 fun receiveFileAck(address: InetAddress, port: Int, socket: DatagramSocket): Int {
     val buffer = ByteArray(64)
     val packet = DatagramPacket(buffer, buffer.size, address, port)
